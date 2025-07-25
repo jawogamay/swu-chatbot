@@ -13,6 +13,7 @@ import {
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useWebhookAI } from '@/hooks/useWebhookAI';
 
 interface Message {
   id: string;
@@ -31,8 +32,10 @@ export default function ChatScreen() {
     }
   ]);
   const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Use the webhook AI hook
+  const { sendMessage: sendToWebhook, isLoading, error } = useWebhookAI();
 
   const tintColor = useThemeColor({}, 'tint');
   const iconColor = useThemeColor({}, 'icon');
@@ -43,38 +46,6 @@ export default function ChatScreen() {
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
-
-  // Simulate AI response
-  const simulateAIResponse = async (userMessage: string) => {
-    setIsLoading(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-    
-    // Generate a simple response (in a real app, this would call an AI API)
-    const responses = [
-      "That's an interesting question! Let me think about that...",
-      "I understand what you're asking. Here's my perspective on that topic.",
-      "Great point! I'd be happy to help you with that.",
-      "That's a complex topic. Let me break it down for you.",
-      "I appreciate you sharing that with me. Here's what I think:",
-      "Absolutely! I can definitely assist you with that.",
-      "Thanks for asking! That's something I can help clarify.",
-    ];
-    
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-    const aiResponse = `${randomResponse} You asked: "${userMessage}". This is a simulated response for demonstration purposes.`;
-    
-    const aiMessage: Message = {
-      id: Date.now().toString() + '_ai',
-      text: aiResponse,
-      isUser: false,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, aiMessage]);
-    setIsLoading(false);
-  };
 
   const sendMessage = async () => {
     if (inputText.trim() === '') return;
@@ -90,8 +61,29 @@ export default function ChatScreen() {
     const messageToSend = inputText.trim();
     setInputText('');
 
-    // Simulate AI response
-    await simulateAIResponse(messageToSend);
+    // Send to webhook and get AI response
+    try {
+      const aiResponse = await sendToWebhook(messageToSend);
+      
+      const aiMessage: Message = {
+        id: Date.now().toString() + '_ai',
+        text: aiResponse,
+        isUser: false,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (err) {
+      console.error('Failed to get AI response:', err);
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: Date.now().toString() + '_error',
+        text: 'Sorry, I\'m having trouble responding right now. Please try again.',
+        isUser: false,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
   };
 
   const formatTime = (date: Date) => {
@@ -109,6 +101,11 @@ export default function ChatScreen() {
         <ThemedText style={[styles.headerSubtitle, { color: iconColor }]}>
           Ask me anything!
         </ThemedText>
+        {error && (
+          <ThemedText style={[styles.errorText, { color: '#ff6b6b' }]}>
+            Connection issues detected
+          </ThemedText>
+        )}
       </ThemedView>
 
       {/* Messages Area */}
@@ -143,7 +140,7 @@ export default function ChatScreen() {
                 style={[
                   styles.messageTime,
                   message.isUser 
-                    ? { color: '#fff', opacity: 0.8 } 
+                    ? { color: '#000', opacity: 0.8 } 
                     : { color: iconColor }
                 ]}
               >
@@ -225,6 +222,11 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     textAlign: 'center',
     fontSize: 14,
+  },
+  errorText: {
+    textAlign: 'center',
+    fontSize: 12,
+    marginTop: 4,
   },
   messagesContainer: {
     flex: 1,
