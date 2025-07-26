@@ -7,7 +7,7 @@ interface UseWebhookAIReturn {
   error: string | null;
 }
 
-const WEBHOOK_URL = 'https://thryvmotivational.app.n8n.cloud/webhook-test/8fe6d9bd-29ae-4128-aa22-847143b66ea7'
+const WEBHOOK_URL = 'https://thryvmotivational.app.n8n.cloud/webhook/8fe6d9bd-29ae-4128-aa22-847143b66ea7'
 
 export function useWebhookAI(): UseWebhookAIReturn {
   const [isLoading, setIsLoading] = useState(false);
